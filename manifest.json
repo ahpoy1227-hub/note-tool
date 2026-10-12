@@ -1,7 +1,8 @@
 {
   "name": "我的电子笔记本",
   "short_name": "笔记",
-  "start_url": "/note-tool/",
+  "start_url": ".",
+
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#4080ff",
