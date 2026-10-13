@@ -1,549 +1,666 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>本地轻量笔记 V1.1（修复版）</title>
-<link rel="manifest" href="manifest.json">
-<link rel="icon" href="icon-192.png">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的笔记工具</title>
+    <link rel="manifest" href="./manifest.json">
+    <meta name="theme-color" content="#121212">
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; font-family:system-ui, sans-serif; }
+        body { background:#121212; color:#eee; display:flex; height:100vh; overflow:hidden; }
 
+        /* ===== 左边栏 ===== */
+        .sidebar { width:300px; background:#1e1e1e; padding:20px 16px; display:flex; flex-direction:column; border-right:1px solid #333; overflow-y:auto; flex-shrink:0; }
+        .sidebar-header { display:flex; justify-content:space-between; font-size:20px; color:#ccc; margin-bottom:14px; }
+        .sidebar-title { font-size:34px; font-weight:bold; margin-bottom:20px; }
+        .new-seg { display:flex; background:#3a3a3a; border-radius:12px; overflow:visible; position:relative; }
+        .seg-btn { flex:1; padding:10px 0; background:transparent; border:none; color:#d4aa00; font-size:18px; cursor:pointer; }
+        .seg-btn.seg-main { flex:1.4; background:#d4aa00; color:#000; font-size:24px; font-weight:bold; border-radius:10px; margin:4px; }
+        .menu-popup { display:none; position:absolute; top:60px; left:0; right:0; background:#2d2d2d; border-radius:10px; padding:8px; z-index:99; box-shadow:0 8px 24px rgba(0,0,0,.5); }
+        .menu-popup.active { display:block; }
+        .menu-item { padding:10px 12px; border-radius:6px; cursor:pointer; font-size:14px; }
+        .menu-item:hover { background:#404040; }
+        .quick-buttons { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin:26px 0; }
+        .quick-btn { background:#2b2b2b; padding:12px 4px 8px; text-align:center; border-radius:8px; font-size:13px; cursor:pointer; }
+        .quick-btn:hover { background:#3b3b3b; }
+        .quick-btn.on { outline:2px solid #d4aa00; }
+        .quick-btn .q-icon { font-size:18px; margin-bottom:4px; }
+        .quick-btn small { color:#aaa; }
+        .folder-section h3 { font-size:14px; color:#aaa; margin-bottom:10px; display:flex; justify-content:space-between; }
+        .folder-section h3 span { color:#d4aa00; cursor:pointer; }
+        .folder-item { padding:9px 10px; border-radius:8px; cursor:pointer; margin-bottom:4px; display:flex; align-items:center; gap:8px; font-size:14px; }
+        .folder-item .count { margin-left:auto; color:#888; }
+        .folder-item.active { background:#443c1a; }
+        .folder-item:hover { background:#383838; }
+        .folder-item .edit-btns { display:none; gap:6px; }
+        .folder-section.editing .folder-item .edit-btns { display:flex; }
+        .folder-section.editing .folder-item .count { display:none; }
+        .mini-btn { background:none; border:none; cursor:pointer; font-size:14px; color:#aaa; }
+        .mini-btn:hover { color:#fff; }
 
+        /* ===== 右边主区 ===== */
+        .main-area { flex:1; padding:20px 28px; overflow-y:auto; }
+        .main-toolbar { display:flex; justify-content:flex-end; gap:18px; align-items:center; font-size:18px; color:#ccc; margin-bottom:24px; }
+        .main-toolbar .icon-btn { cursor:pointer; background:none; border:none; font-size:18px; color:#ccc; }
+        .search-box { display:none; background:#2b2b2b; border:1px solid #444; border-radius:8px; color:#eee; padding:6px 12px; font-size:14px; width:200px; }
+        .search-box.show { display:block; }
+        .main-top-title { font-size:26px; font-weight:bold; }
+        .main-subtitle { font-size:14px; color:#888; margin:6px 0 26px; }
+        .note-section h4 { font-size:14px; color:#999; font-weight:normal; margin-bottom:14px; }
+        .note-section + .note-section { margin-top:28px; }
+        .note-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(170px,1fr)); gap:18px; }
+        .note-card { position:relative; cursor:pointer; }
+        .note-card:hover .card-preview { filter:brightness(1.08); }
+        .card-preview { height:190px; background:#f7f4ec; border-radius:10px; padding:12px; color:#333; font-size:12px; overflow:hidden; line-height:1.7; white-space:pre-wrap; word-break:break-word; }
+        .card-preview.img { padding:0; background:#222 center/cover no-repeat; }
+        .card-info { padding:10px 4px 0; }
+        .card-title { font-size:14px; margin-bottom:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .card-title .pin-mark { color:#d4aa00; }
+        .card-time { font-size:12px; color:#888; }
+        .card-actions { display:none; position:absolute; top:6px; right:6px; gap:4px; }
+        .note-card:hover .card-actions { display:flex; }
+        .card-actions button { background:rgba(0,0,0,.65); border:none; border-radius:6px; color:#fff; cursor:pointer; font-size:13px; padding:3px 7px; }
+        .empty-tip { color:#666; text-align:center; padding:60px 0; font-size:15px; }
 
-
-  <style>
-    /* 全局与排版重置 */
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-      display: flex;
-      height: 100vh;
-      width: 100vw;
-      overflow: hidden;
-      background-color: #f8fafc;
-      color: #334155;
-    }
-
-    /* 左侧边栏：列表区 */
-    #sidebar {
-      width: 280px;
-      min-width: 220px;
-      max-width: 340px;
-      background-color: #ffffff;
-      border-right: 1px solid #e2e8f0;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .sidebar-header {
-      padding: 16px;
-      border-bottom: 1px solid #f1f5f9;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .sidebar-header h2 {
-      font-size: 16px;
-      font-weight: 600;
-      color: #0f172a;
-    }
-
-    .btn-primary {
-      background-color: #2563eb;
-      color: #ffffff;
-      border: none;
-      padding: 6px 14px;
-      border-radius: 6px;
-      font-size: 13px;
-      cursor: pointer;
-      transition: background-color 0.2s;
-    }
-
-    .btn-primary:hover {
-      background-color: #1d4ed8;
-    }
-
-    /* 笔记列表 */
-    #noteList {
-      flex: 1;
-      overflow-y: auto;
-      list-style: none;
-    }
-
-    .note-item {
-      padding: 14px 16px;
-      border-bottom: 1px solid #f8fafc;
-      cursor: pointer;
-      transition: background 0.15s;
-    }
-
-    .note-item:hover {
-      background-color: #f1f5f9;
-    }
-
-    .note-item.active {
-      background-color: #e0e7ff;
-      border-left: 4px solid #2563eb;
-    }
-
-    .note-item-title {
-      font-size: 14px;
-      font-weight: 500;
-      color: #1e293b;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      margin-bottom: 4px;
-    }
-
-    /* 新增：正文预览行 */
-    .note-item-preview {
-      font-size: 12px;
-      color: #64748b;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      margin-bottom: 4px;
-    }
-
-    .note-item-date {
-      font-size: 11px;
-      color: #94a3b8;
-    }
-
-    .empty-hint {
-      padding: 24px 16px;
-      text-align: center;
-      font-size: 13px;
-      color: #94a3b8;
-    }
-
-    /* 右侧：编辑器主区 */
-    #mainContent {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      background-color: #ffffff;
-    }
-
-    .editor-toolbar {
-      padding: 12px 24px;
-      border-bottom: 1px solid #f1f5f9;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .editor-status {
-      font-size: 12px;
-      color: #64748b;
-    }
-
-    /* 新增：未保存状态高亮 */
-    .editor-status.unsaved {
-      color: #d97706;
-      font-weight: 500;
-    }
-
-    .actions {
-      display: flex;
-      gap: 10px;
-    }
-
-    .btn-save {
-      background-color: #059669;
-      color: #ffffff;
-      border: none;
-      padding: 6px 14px;
-      border-radius: 6px;
-      font-size: 13px;
-      cursor: pointer;
-      transition: background-color 0.2s;
-    }
-
-    .btn-save:hover {
-      background-color: #047857;
-    }
-
-    .btn-delete {
-      background-color: #fee2e2;
-      color: #dc2626;
-      border: 1px solid #fecaca;
-      padding: 6px 14px;
-      border-radius: 6px;
-      font-size: 13px;
-      cursor: pointer;
-      transition: background-color 0.2s;
-    }
-
-    .btn-delete:hover {
-      background-color: #fca5a5;
-    }
-
-    /* 文本输入区域 */
-    .editor-form {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      padding: 24px 32px;
-      overflow: hidden;
-    }
-
-    #noteTitle {
-      font-size: 22px;
-      font-weight: 600;
-      border: none;
-      outline: none;
-      padding-bottom: 12px;
-      margin-bottom: 16px;
-      border-bottom: 1px solid #f1f5f9;
-      color: #0f172a;
-    }
-
-    #noteTitle::placeholder {
-      color: #cbd5e1;
-    }
-
-    #noteBody {
-      flex: 1;
-      font-size: 15px;
-      line-height: 1.7;
-      border: none;
-      outline: none;
-      resize: none;
-      color: #334155;
-      font-family: inherit;
-    }
-
-    #noteBody::placeholder {
-      color: #cbd5e1;
-    }
-
-    /* 空白状态提示（无笔记选中时） */
-    #noNotePlaceholder {
-      flex: 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #94a3b8;
-      font-size: 15px;
-    }
-  </style>
-<base target="_blank">
+        /* ===== 全屏页面（编辑/画画/看图 共用遮罩） ===== */
+        .overlay { display:none; position:fixed; inset:0; background:#121212; z-index:100; flex-direction:column; padding:18px 26px; }
+        .overlay.show { display:flex; }
+        .overlay-top { display:flex; align-items:center; gap:14px; margin-bottom:16px; }
+        .overlay-top .back { background:#2b2b2b; border:none; color:#eee; border-radius:8px; padding:8px 14px; cursor:pointer; font-size:14px; }
+        .overlay-top .spacer { flex:1; }
+        .top-btn { background:#2b2b2b; border:none; color:#eee; border-radius:8px; padding:8px 14px; cursor:pointer; font-size:14px; }
+        .top-btn.gold { background:#d4aa00; color:#000; font-weight:bold; }
+        .top-btn.on { outline:2px solid #d4aa00; }
+        .title-input { background:#1e1e1e; border:1px solid #333; border-radius:8px; color:#eee; font-size:20px; padding:12px 14px; margin-bottom:14px; }
+        .content-input { flex:1; background:#1e1e1e; border:1px solid #333; border-radius:8px; color:#eee; font-size:15px; padding:14px; resize:none; line-height:1.8; }
+        .move-select { background:#2b2b2b; border:1px solid #444; color:#eee; border-radius:8px; padding:7px; font-size:13px; }
+        .viewer-img { flex:1; object-fit:contain; border-radius:10px; background:#000; }
+        .draw-canvas { flex:1; background:#fff; border-radius:10px; touch-action:none; cursor:crosshair; }
+        .draw-tools { display:flex; gap:10px; margin:12px 0; align-items:center; }
+        .color-dot { width:26px; height:26px; border-radius:50%; cursor:pointer; border:2px solid transparent; }
+        .color-dot.on { border-color:#fff; }
+    </style>
 </head>
 <body>
-
-  <!-- 左侧：笔记列表栏 -->
-  <aside id="sidebar">
-    <div class="sidebar-header">
-      <h2>我的笔记</h2>
-      <button class="btn-primary" id="btnNewNote">+ 新建</button>
-    </div>
-    <ul id="noteList">
-      <!-- 笔记列表由 JS 动态渲染 -->
-    </ul>
-  </aside>
-
-  <!-- 右侧：笔记查看与编辑栏 -->
-  <main id="mainContent">
-    <!-- 当有选中的笔记时展示编辑面板 -->
-    <div id="editorArea" style="display: none; height: 100%; flex-direction: column;">
-      <div class="editor-toolbar">
-        <span class="editor-status" id="saveStatus">就绪</span>
-        <div class="actions">
-          <button class="btn-save" id="btnSaveNote">保存</button>
-          <button class="btn-delete" id="btnDeleteNote">删除</button>
+    <!-- 左边栏 -->
+    <div class="sidebar">
+        <div class="sidebar-header"><span>☰</span><span>⚙</span></div>
+        <div class="sidebar-title">笔记</div>
+        <div class="new-seg">
+            <button class="seg-btn" id="btnView" title="切换视图">▦</button>
+            <button class="seg-btn seg-main" id="btnNew">＋</button>
+            <button class="seg-btn" id="btnDrawQuick" title="手写">✎</button>
+            <div class="menu-popup" id="newMenu">
+                <div class="menu-item" data-new="text">📝 文本笔记</div>
+                <div class="menu-item" data-new="draw">✍️ 手写笔记</div>
+                <div class="menu-item" data-new="photo">📷 拍照</div>
+                <div class="menu-item" data-new="import">📄 导入文档</div>
+            </div>
         </div>
-      </div>
-      <div class="editor-form">
-        <input type="text" id="noteTitle" placeholder="无标题笔记..." />
-        <textarea id="noteBody" placeholder="从这里开始输入正文内容..."></textarea>
-      </div>
+        <div class="quick-buttons">
+            <div class="quick-btn on" data-cat="all"><div class="q-icon">🗂️</div>全部笔记<br><small id="cAll">0</small></div>
+            <div class="quick-btn" data-cat="text"><div class="q-icon">📄</div>文本笔记<br><small id="cText">0</small></div>
+            <div class="quick-btn" data-cat="draw"><div class="q-icon">✍️</div>手写笔记<br><small id="cDraw">0</small></div>
+            <div class="quick-btn" data-cat="fav"><div class="q-icon">⭐</div>收藏笔记<br><small id="cFav">0</small></div>
+            <div class="quick-btn" data-cat="card"><div class="q-icon">💳</div>卡证中心<br><small id="cCard">0</small></div>
+            <div class="quick-btn" data-cat="trash"><div class="q-icon">🗑️</div>最近删除<br><small id="cTrash">0</small></div>
+        </div>
+        <div class="folder-section" id="folderSection">
+            <h3>文件夹 <span id="btnFolderEdit">编辑</span></h3>
+            <div id="folderList"></div>
+            <div class="folder-item" id="btnNewFolder" style="margin-top:10px; color:#d4aa00;">➕ 新建文件夹</div>
+        </div>
     </div>
 
-    <!-- 当没有任何笔记时的占位状态 -->
-    <div id="noNotePlaceholder">
-      <p>点击左侧“+ 新建”开始记笔记</p>
+    <!-- 右边主区 -->
+    <div class="main-area">
+        <div class="main-toolbar">
+            <input class="search-box" id="searchBox" placeholder="搜索笔记...">
+            <button class="icon-btn" id="btnSearch">🔍</button>
+            <button class="icon-btn" id="btnMore">⋮</button>
+        </div>
+        <div class="main-top-title" id="mainTitle">全部笔记</div>
+        <div class="main-subtitle" id="mainSub">0 条笔记</div>
+        <div id="sections"></div>
     </div>
-  </main>
 
-  <script>
-    /* ==========================================================
-       1. 数据初始化与状态定义
-       ========================================================== */
-    const STORAGE_KEY = "local_simple_notes_data";
+    <!-- 文本编辑页 -->
+    <div class="overlay" id="editorPage">
+        <div class="overlay-top">
+            <button class="back" id="editBack">← 返回</button>
+            <div class="spacer"></div>
+            <select class="move-select" id="editMove"></select>
+            <button class="top-btn" id="editFav">☆ 收藏</button>
+            <button class="top-btn" id="editPin">📌 置顶</button>
+            <button class="top-btn" id="editDelete">🗑 删除</button>
+            <button class="top-btn gold" id="editSave">保存</button>
+        </div>
+        <input class="title-input" id="editTitle" placeholder="标题">
+        <textarea class="content-input" id="editContent" placeholder="在这里输入内容..."></textarea>
+    </div>
 
-    // 内存中的笔记数组
-    let notes = [];
-    // 当前选中的笔记 ID
-    let currentNoteId = null;
-    // 自动保存防抖定时器
-    let saveTimer = null;
-    // 当前是否有未保存的修改（脏标记）
-    let dirty = false;
+    <!-- 看图页（手写/拍照/导入的图片） -->
+    <div class="overlay" id="viewerPage">
+        <div class="overlay-top">
+            <button class="back" id="viewBack">← 返回</button>
+            <div class="spacer"></div>
+            <select class="move-select" id="viewMove"></select>
+            <button class="top-btn" id="viewFav">☆ 收藏</button>
+            <button class="top-btn" id="viewPin">📌 置顶</button>
+            <button class="top-btn" id="viewDelete">🗑 删除</button>
+        </div>
+        <input class="title-input" id="viewTitle" placeholder="标题">
+        <img class="viewer-img" id="viewImg" alt="笔记图片">
+    </div>
 
-    // DOM 元素引用
-    const noteListEl = document.getElementById("noteList");
-    const editorAreaEl = document.getElementById("editorArea");
-    const noNotePlaceholderEl = document.getElementById("noNotePlaceholder");
-    const noteTitleInput = document.getElementById("noteTitle");
-    const noteBodyInput = document.getElementById("noteBody");
-    const saveStatusEl = document.getElementById("saveStatus");
+    <!-- 手写画画页 -->
+    <div class="overlay" id="drawPage">
+        <div class="overlay-top">
+            <button class="back" id="drawBack">← 返回</button>
+            <div class="spacer"></div>
+            <button class="top-btn gold" id="drawSave">保存</button>
+        </div>
+        <div class="draw-tools">
+            颜色：
+            <div class="color-dot on" data-color="#000000" style="background:#000"></div>
+            <div class="color-dot" data-color="#d4aa00" style="background:#d4aa00"></div>
+            <div class="color-dot" data-color="#cc0000" style="background:#cc0000"></div>
+            <div class="color-dot" data-color="#0055cc" style="background:#0055cc"></div>
+            <button class="top-btn" id="drawEraser">🧽 橡皮</button>
+            <button class="top-btn" id="drawClear">清空</button>
+        </div>
+        <canvas class="draw-canvas" id="drawCanvas"></canvas>
+    </div>
 
-    const btnNew = document.getElementById("btnNewNote");
-    const btnSave = document.getElementById("btnSaveNote");
-    const btnDelete = document.getElementById("btnDeleteNote");
+    <!-- 隐藏的文件选择框 -->
+    <input type="file" id="photoInput" accept="image/*" capture="environment" style="display:none">
+    <input type="file" id="importInput" style="display:none">
 
-    /* ==========================================================
-       2. 本地存储 (localStorage) 存取函数
-       ========================================================== */
-    // 从 localStorage 读取笔记数据
-    // 【修复 Bug 2】读取后进行数据清洗：防"JSON 合法但字段残缺"的数据导致渲染崩溃
-    function loadNotesFromStorage() {
-      try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        const parsed = raw ? JSON.parse(raw) : [];
-        notes = (Array.isArray(parsed) ? parsed : [])
-          .filter(n => n && typeof n.id === "string")
-          .map(n => ({
-            id: n.id,
-            title: typeof n.title === "string" ? n.title : "",
-            body: typeof n.body === "string" ? n.body : "",
-            updatedAt: typeof n.updatedAt === "number" ? n.updatedAt : Date.now()
-          }));
-      } catch (err) {
-        console.error("读取本地存储失败", err);
-        notes = [];
-      }
+<script>
+/* ================================================================
+   数据：所有笔记和文件夹都存在浏览器本地，刷新不丢
+================================================================ */
+const SAVE_KEY = 'my_notes_data_v1';
+let state = loadState();
+
+function defaultState(){
+    return {
+        notes: [],
+        folders: ['旅游','个人','生活','工作','卡证中心']
+    };
+}
+function loadState(){
+    try {
+        const raw = localStorage.getItem(SAVE_KEY);
+        if(raw) return JSON.parse(raw);
+    } catch(e){}
+    return defaultState();
+}
+function saveState(){
+    localStorage.setItem(SAVE_KEY, JSON.stringify(state));
+}
+
+/* 演示数据：网址后加 ?demo=1 可以看到两张示例笔记 */
+if(location.search.includes('demo=1') && state.notes.length === 0){
+    const now = Date.now();
+    state.notes.push(
+        { id:now, type:'text', title:'欢迎使用笔记', content:'这是你的第一条笔记！\n\n点左上角黄色 ＋ 可以新建：\n📝 文本笔记　✍️ 手写笔记\n📷 拍照　　　📄 导入文档\n\n写完点保存，关掉再打开也不会丢。', pinned:true, favorite:true, folder:'未分类', deleted:false, updated:now },
+        { id:now+1, type:'text', title:'使用小技巧', content:'把鼠标移到卡片上，会出现小按钮：\n⭐ 收藏　📌 置顶　🗑 删除\n\n删除的笔记会进"最近删除"，可以恢复。', pinned:false, favorite:false, folder:'未分类', deleted:false, updated:now - 86400000*30 }
+    );
+    saveState();
+}
+
+/* ================================================================
+   界面状态：当前在哪个分类 / 哪个文件夹 / 搜索词
+================================================================ */
+let currentCat = 'all';      // all text draw fav card trash
+let currentFolder = '未分类';
+let searchWord = '';
+let editingId = null;        // 正在编辑的笔记 id
+
+const $ = id => document.getElementById(id);
+const esc = s => (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+/* ================================================================
+   左边栏渲染
+================================================================ */
+function countNotes(cat){
+    const alive = state.notes.filter(n => !n.deleted);
+    if(cat === 'all')  return alive.length;
+    if(cat === 'text') return alive.filter(n => n.type === 'text').length;
+    if(cat === 'draw') return alive.filter(n => n.type === 'image' && n.source === 'draw').length;
+    if(cat === 'fav')  return alive.filter(n => n.favorite).length;
+    if(cat === 'card') return alive.filter(n => n.folder === '卡证中心').length;
+    if(cat === 'trash') return state.notes.filter(n => n.deleted).length;
+    return 0;
+}
+function renderSidebarCounts(){
+    $('cAll').textContent  = countNotes('all');
+    $('cText').textContent = countNotes('text');
+    $('cDraw').textContent = countNotes('draw');
+    $('cFav').textContent  = countNotes('fav');
+    $('cCard').textContent = countNotes('card');
+    $('cTrash').textContent= countNotes('trash');
+}
+function renderFolders(){
+    const box = $('folderList');
+    box.innerHTML = '';
+    const all = ['未分类'].concat(state.folders);
+    all.forEach(name => {
+        const cnt = state.notes.filter(n => !n.deleted && n.folder === name).length;
+        const div = document.createElement('div');
+        div.className = 'folder-item' + (currentCat === 'folder' && currentFolder === name ? ' active' : '');
+        div.innerHTML = '<span>📁</span><span>' + esc(name) + '</span>'
+            + '<span class="count">' + cnt + '</span>'
+            + (name === '未分类' ? '' :
+               '<span class="edit-btns"><button class="mini-btn" data-rename="' + esc(name) + '">✏️</button>'
+               + '<button class="mini-btn" data-delfolder="' + esc(name) + '">🗑</button></span>');
+        div.onclick = e => {
+            if(e.target.dataset.rename){ renameFolder(e.target.dataset.rename); return; }
+            if(e.target.dataset.delfolder){ deleteFolder(e.target.dataset.delfolder); return; }
+            currentCat = 'folder'; currentFolder = name; searchWord = ''; $('searchBox').value='';
+            renderAll();
+        };
+        box.appendChild(div);
+    });
+}
+
+/* ================================================================
+   右边主区渲染
+================================================================ */
+function getShownNotes(){
+    let list = state.notes.slice();
+    if(currentCat === 'trash'){
+        list = list.filter(n => n.deleted);
+    } else {
+        list = list.filter(n => !n.deleted);
+        if(currentCat === 'text') list = list.filter(n => n.type === 'text');
+        if(currentCat === 'draw') list = list.filter(n => n.type === 'image' && n.source === 'draw');
+        if(currentCat === 'fav')  list = list.filter(n => n.favorite);
+        if(currentCat === 'card') list = list.filter(n => n.folder === '卡证中心');
+        if(currentCat === 'folder') list = list.filter(n => n.folder === currentFolder);
     }
-
-    // 将笔记数据持久化至 localStorage
-    function saveNotesToStorage() {
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(notes));
-      } catch (err) {
-        console.error("保存至本地存储失败", err);
-        alert("存储已满或异常，无法保存！");
-      }
+    if(searchWord){
+        list = list.filter(n => (n.title + ' ' + n.content).toLowerCase().includes(searchWord.toLowerCase()));
     }
+    list.sort((a,b) => b.updated - a.updated);
+    return list;
+}
+function monthLabel(t){
+    const d = new Date(t);
+    return d.getFullYear() + '年' + (d.getMonth()+1) + '月';
+}
+function timeLabel(t){
+    const d = new Date(t);
+    return (d.getMonth()+1) + '月' + d.getDate() + '日';
+}
+function renderMain(){
+    const titles = { all:'全部笔记', text:'文本笔记', draw:'手写笔记', fav:'收藏笔记', card:'卡证中心', trash:'最近删除', folder:currentFolder };
+    $('mainTitle').textContent = titles[currentCat] || '全部笔记';
+    const list = getShownNotes();
+    $('mainSub').textContent = list.length + ' 条笔记';
 
-    /* ==========================================================
-       3. 核心业务逻辑
-       ========================================================== */
-    // 渲染左侧列表
-    // 【改进】全部改用 textContent 赋值，天然防 XSS，无需再手动转义
-    function renderNoteList() {
-      noteListEl.innerHTML = "";
-
-      if (notes.length === 0) {
-        const emptyLi = document.createElement("li");
-        emptyLi.className = "empty-hint";
-        emptyLi.textContent = "暂无笔记";
-        noteListEl.appendChild(emptyLi);
+    const box = $('sections');
+    box.innerHTML = '';
+    if(list.length === 0){
+        box.innerHTML = '<div class="empty-tip">这里空空如也～<br>点左上角黄色 ＋ 创建一个吧！</div>';
         return;
-      }
-
-      notes.forEach(note => {
-        const li = document.createElement("li");
-        li.className = `note-item ${note.id === currentNoteId ? "active" : ""}`;
-
-        const titleDiv = document.createElement("div");
-        titleDiv.className = "note-item-title";
-        titleDiv.textContent = note.title.trim() === "" ? "无标题笔记" : note.title;
-
-        // 【新增】正文预览行
-        const previewDiv = document.createElement("div");
-        previewDiv.className = "note-item-preview";
-        previewDiv.textContent = note.body.trim() === ""
-          ? ""
-          : note.body.replace(/\s+/g, " ").slice(0, 50);
-
-        const dateDiv = document.createElement("div");
-        dateDiv.className = "note-item-date";
-        // 【改进】日期格式加上年份，跨年的笔记也能看出时间
-        dateDiv.textContent = new Date(note.updatedAt).toLocaleString("zh-CN", {
-          year: "2-digit",
-          month: "2-digit",
-          day: "2-digit",
-          hour: "2-digit",
-          minute: "2-digit"
+    }
+    // 置顶一组，其余按月分组
+    const groups = [];
+    const pinned = list.filter(n => n.pinned && currentCat !== 'trash');
+    if(pinned.length) groups.push({ name:'📌 置顶', notes:pinned });
+    if(currentCat === 'trash'){
+        groups.push({ name:'已删除', notes:list });
+    } else {
+        const rest = list.filter(n => !pinned.includes(n));
+        const byMonth = {};
+        rest.forEach(n => {
+            const key = monthLabel(n.updated);
+            if(!byMonth[key]) byMonth[key] = [];
+            byMonth[key].push(n);
         });
-
-        li.appendChild(titleDiv);
-        if (previewDiv.textContent !== "") li.appendChild(previewDiv);
-        li.appendChild(dateDiv);
-
-        li.addEventListener("click", () => {
-          selectNote(note.id);
-        });
-
-        noteListEl.appendChild(li);
-      });
+        Object.keys(byMonth).forEach(k => groups.push({ name:k, notes:byMonth[k] }));
     }
-
-    // 选中某篇笔记并加载到右侧
-    // 【修复 Bug 1a】切换前若当前笔记有未保存修改，先自动保存
-    function selectNote(id) {
-      if (currentNoteId && currentNoteId !== id && dirty) {
-        handleSaveCurrentNote();
-      }
-
-      currentNoteId = id;
-      dirty = false;
-
-      const target = notes.find(n => n.id === id);
-
-      if (target) {
-        editorAreaEl.style.display = "flex";
-        noNotePlaceholderEl.style.display = "none";
-
-        noteTitleInput.value = target.title;
-        noteBodyInput.value = target.body;
-        saveStatusEl.textContent = "已加载";
-        saveStatusEl.classList.remove("unsaved");
-      } else {
-        // 若找不到指定笔记，回到空状态
-        editorAreaEl.style.display = "none";
-        noNotePlaceholderEl.style.display = "flex";
-      }
-
-      renderNoteList();
-    }
-
-    // 【改进】生成笔记 ID：优先 crypto.randomUUID，避免同一毫秒连点新建导致 ID 冲突
-    function generateNoteId() {
-      if (window.crypto && typeof crypto.randomUUID === "function") {
-        return "note_" + crypto.randomUUID();
-      }
-      return "note_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8);
-    }
-
-    // 新建笔记
-    function handleCreateNewNote() {
-      const newNote = {
-        id: generateNoteId(),
-        title: "",
-        body: "",
-        updatedAt: Date.now()
-      };
-
-      // 插入到列表开头
-      notes.unshift(newNote);
-      saveNotesToStorage();
-
-      // 自动切换并聚焦到新笔记
-      selectNote(newNote.id);
-      noteTitleInput.focus();
-      saveStatusEl.textContent = "已新建";
-    }
-
-    // 【修复 Bug 1b】输入即标记"未保存"，并在停顿 800ms 后自动落盘
-    function markDirtyAndScheduleSave() {
-      if (!currentNoteId) return;
-
-      if (!dirty) {
-        dirty = true;
-        saveStatusEl.textContent = "未保存的修改";
-        saveStatusEl.classList.add("unsaved");
-      }
-
-      clearTimeout(saveTimer);
-      saveTimer = setTimeout(handleSaveCurrentNote, 800);
-    }
-
-    // 保存当前笔记
-    function handleSaveCurrentNote() {
-      if (!currentNoteId) return;
-      clearTimeout(saveTimer);
-
-      const target = notes.find(n => n.id === currentNoteId);
-      if (target) {
-        target.title = noteTitleInput.value;
-        target.body = noteBodyInput.value;
-        target.updatedAt = Date.now();
-
-        // 重新排到最顶端
-        notes = [target, ...notes.filter(n => n.id !== currentNoteId)];
-
-        saveNotesToStorage();
-        dirty = false;
-        saveStatusEl.textContent = "已保存 " + new Date().toLocaleTimeString();
-        saveStatusEl.classList.remove("unsaved");
-        renderNoteList();
-      }
-    }
-
-    // 删除笔记
-    function handleDeleteCurrentNote() {
-      if (!currentNoteId) return;
-
-      const confirmed = confirm("确定要删除这篇笔记吗？");
-      if (!confirmed) return;
-
-      // 【改进】清除可能挂起的自动保存，避免删除后定时器误触发
-      clearTimeout(saveTimer);
-
-      // 从数组中过滤掉
-      notes = notes.filter(n => n.id !== currentNoteId);
-      saveNotesToStorage();
-      dirty = false;
-
-      // 删除后选中列表第一篇，若无则清空
-      if (notes.length > 0) {
-        selectNote(notes[0].id);
-      } else {
-        currentNoteId = null;
-        editorAreaEl.style.display = "none";
-        noNotePlaceholderEl.style.display = "flex";
-        renderNoteList();
-      }
-    }
-
-    /* ==========================================================
-       4. 事件监听与键盘快捷键
-       ========================================================== */
-    btnNew.addEventListener("click", handleCreateNewNote);
-    btnSave.addEventListener("click", handleSaveCurrentNote);
-    btnDelete.addEventListener("click", handleDeleteCurrentNote);
-
-    // 【修复 Bug 1b】输入时自动调度保存
-    noteTitleInput.addEventListener("input", markDirtyAndScheduleSave);
-    noteBodyInput.addEventListener("input", markDirtyAndScheduleSave);
-
-    // 【新增】关闭/刷新页面前，如有未保存修改则弹出提示
-    window.addEventListener("beforeunload", (e) => {
-      if (dirty) {
-        e.preventDefault();
-        e.returnValue = "";
-      }
+    groups.forEach(g => {
+        const sec = document.createElement('div');
+        sec.className = 'note-section';
+        sec.innerHTML = '<h4>' + esc(g.name) + '</h4>';
+        const grid = document.createElement('div');
+        grid.className = 'note-grid';
+        g.notes.forEach(n => grid.appendChild(makeCard(n)));
+        sec.appendChild(grid);
+        box.appendChild(sec);
     });
-
-    // 支持 Ctrl+S (或 Mac Command+S) 快捷保存
-    window.addEventListener("keydown", (e) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
-        e.preventDefault();
-        handleSaveCurrentNote();
-      }
-    });
-
-    /* ==========================================================
-       5. 页面初始化启动
-       ========================================================== */
-    function init() {
-      loadNotesFromStorage();
-      if (notes.length > 0) {
-        selectNote(notes[0].id);
-      } else {
-        renderNoteList();
-      }
+}
+function makeCard(n){
+    const card = document.createElement('div');
+    card.className = 'note-card';
+    let preview;
+    if(n.type === 'image' && n.image){
+        preview = '<div class="card-preview img" style="background-image:url(' + n.image + ')"></div>';
+    } else {
+        const text = (n.content || '').slice(0, 120);
+        preview = '<div class="card-preview">' + esc(text) + '</div>';
     }
+    card.innerHTML = preview
+        + '<div class="card-info">'
+        + '<div class="card-title">' + (n.pinned ? '<span class="pin-mark">📌</span> ' : '') + esc(n.title || '无标题') + '</div>'
+        + '<div class="card-time">' + timeLabel(n.updated) + '</div></div>';
+    // 卡片上的小按钮
+    const acts = document.createElement('div');
+    acts.className = 'card-actions';
+    if(currentCat === 'trash'){
+        acts.innerHTML = '<button data-act="restore">↩ 恢复</button><button data-act="wipe">彻底删除</button>';
+    } else {
+        acts.innerHTML = '<button data-act="fav">' + (n.favorite ? '★' : '☆') + '</button>'
+            + '<button data-act="pin">' + (n.pinned ? '取消置顶' : '📌') + '</button>'
+            + '<button data-act="del">🗑</button>';
+    }
+    acts.onclick = e => {
+        e.stopPropagation();
+        const act = e.target.dataset.act;
+        if(act === 'fav') n.favorite = !n.favorite;
+        if(act === 'pin') n.pinned = !n.pinned;
+        if(act === 'del') n.deleted = true;
+        if(act === 'restore') n.deleted = false;
+        if(act === 'wipe'){
+            if(confirm('彻底删除后找不回来，确定吗？')){
+                state.notes = state.notes.filter(x => x.id !== n.id);
+            } else return;
+        }
+        saveState(); renderAll();
+    };
+    card.appendChild(acts);
+    card.onclick = () => openNote(n.id);
+    return card;
+}
+function renderAll(){
+    renderSidebarCounts();
+    renderFolders();
+    renderMain();
+    document.querySelectorAll('.quick-btn').forEach(b =>
+        b.classList.toggle('on', b.dataset.cat === currentCat));
+}
 
-    init();
-  </script>
+/* ================================================================
+   打开笔记：文本进编辑页，图片进看图页
+================================================================ */
+function openNote(id){
+    const n = state.notes.find(x => x.id === id);
+    if(!n) return;
+    editingId = id;
+    fillMoveSelects(n.folder);
+    if(n.type === 'text'){
+        $('editTitle').value = n.title || '';
+        $('editContent').value = n.content || '';
+        updateFavPinButtons('edit', n);
+        showPage('editorPage');
+        $('editTitle').focus();
+    } else {
+        $('viewTitle').value = n.title || '';
+        $('viewImg').src = n.image || '';
+        updateFavPinButtons('view', n);
+        showPage('viewerPage');
+    }
+}
+function updateFavPinButtons(prefix, n){
+    $(prefix + 'Fav').textContent = n.favorite ? '★ 已收藏' : '☆ 收藏';
+    $(prefix + 'Fav').classList.toggle('on', n.favorite);
+    $(prefix + 'Pin').textContent = n.pinned ? '取消置顶' : '📌 置顶';
+    $(prefix + 'Pin').classList.toggle('on', n.pinned);
+}
+function fillMoveSelects(current){
+    ['editMove','viewMove'].forEach(id => {
+        const sel = $(id);
+        sel.innerHTML = '<option value="未分类">📁 未分类</option>'
+            + state.folders.map(f => '<option value="' + esc(f) + '">📁 ' + esc(f) + '</option>').join('');
+        sel.value = current || '未分类';
+    });
+}
+function showPage(id){
+    document.querySelectorAll('.overlay').forEach(o => o.classList.remove('show'));
+    if(id) $(id).classList.add('show');
+}
+
+/* ================================================================
+   保存 / 删除 文本笔记
+================================================================ */
+$('editSave').onclick = () => {
+    const title = $('editTitle').value.trim();
+    const content = $('editContent').value;
+    if(!title && !content){ alert('先写点东西再保存哦'); return; }
+    const folder = $('editMove').value;
+    if(editingId){
+        const n = state.notes.find(x => x.id === editingId);
+        Object.assign(n, { title, content, folder, updated: Date.now() });
+    } else {
+        state.notes.push({ id:Date.now(), type:'text', title, content, folder,
+            pinned:false, favorite:false, deleted:false, updated:Date.now() });
+    }
+    saveState(); renderAll(); showPage(null);
+};
+['editFav','editPin'].forEach((id, i) => {
+    $(id).onclick = () => {
+        const n = state.notes.find(x => x.id === editingId);
+        if(!n) return;
+        if(i === 0) n.favorite = !n.favorite;
+        else n.pinned = !n.pinned;
+        saveState(); updateFavPinButtons('edit', n); renderAll();
+    };
+});
+$('editDelete').onclick = () => {
+    const n = state.notes.find(x => x.id === editingId);
+    if(!n) return;
+    if(confirm('删除这条笔记？（可以去"最近删除"找回）')){
+        n.deleted = true; saveState(); renderAll(); showPage(null);
+    }
+};
+$('editBack').onclick = () => showPage(null);
+$('editMove').onchange = e => {
+    const n = state.notes.find(x => x.id === editingId);
+    if(n){ n.folder = e.target.value; saveState(); renderAll(); }
+};
+
+/* 看图页按钮 */
+$('viewBack').onclick = () => showPage(null);
+$('viewTitle').oninput = e => {
+    const n = state.notes.find(x => x.id === editingId);
+    if(n){ n.title = e.target.value.trim(); n.updated = Date.now(); saveState(); renderAll(); }
+};
+$('viewMove').onchange = e => {
+    const n = state.notes.find(x => x.id === editingId);
+    if(n){ n.folder = e.target.value; saveState(); renderAll(); }
+};
+['viewFav','viewPin'].forEach((id, i) => {
+    $(id).onclick = () => {
+        const n = state.notes.find(x => x.id === editingId);
+        if(!n) return;
+        if(i === 0) n.favorite = !n.favorite;
+        else n.pinned = !n.pinned;
+        saveState(); updateFavPinButtons('view', n); renderAll();
+    };
+});
+$('viewDelete').onclick = () => {
+    const n = state.notes.find(x => x.id === editingId);
+    if(!n) return;
+    if(confirm('删除这条笔记？（可以去"最近删除"找回）')){
+        n.deleted = true; saveState(); renderAll(); showPage(null);
+    }
+};
+
+/* ================================================================
+   新建菜单
+================================================================ */
+const btnNew = $('btnNew'), newMenu = $('newMenu');
+btnNew.onclick = e => { e.stopPropagation(); newMenu.classList.toggle('active'); };
+document.body.addEventListener('click', e => {
+    if(!btnNew.contains(e.target) && !newMenu.contains(e.target)) newMenu.classList.remove('active');
+});
+newMenu.querySelectorAll('.menu-item').forEach(item => {
+    item.onclick = () => {
+        newMenu.classList.remove('active');
+        const kind = item.dataset.new;
+        if(kind === 'text'){
+            editingId = null;
+            $('editTitle').value = ''; $('editContent').value = '';
+            fillMoveSelects(currentFolder);
+            updateFavPinButtons('edit', { favorite:false, pinned:false });
+            showPage('editorPage');
+            $('editTitle').focus();
+        }
+        if(kind === 'draw') openDraw();
+        if(kind === 'photo') $('photoInput').click();
+        if(kind === 'import') $('importInput').click();
+    };
+});
+$('btnDrawQuick').onclick = () => openDraw();
+$('btnView').onclick = () => alert('这是卡片视图～列表视图以后再加！');
+$('btnMore').onclick = () => alert('我的笔记工具 V1.0\n数据只存在这台设备的浏览器里，不上网也能用。');
+
+/* ================================================================
+   拍照 / 导入文档
+================================================================ */
+$('photoInput').onchange = e => {
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+        state.notes.push({ id:Date.now(), type:'image', source:'photo',
+            title:'拍照 ' + new Date().toLocaleString(), image:reader.result,
+            folder:currentFolder, pinned:false, favorite:false, deleted:false, updated:Date.now() });
+        saveState(); renderAll();
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+};
+$('importInput').onchange = e => {
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+        if(file.type.startsWith('image/')){
+            state.notes.push({ id:Date.now(), type:'image', source:'import',
+                title:file.name, image:reader.result,
+                folder:currentFolder, pinned:false, favorite:false, deleted:false, updated:Date.now() });
+        } else {
+            state.notes.push({ id:Date.now(), type:'text', source:'import',
+                title:file.name.replace(/\.[^.]+$/, ''), content:reader.result,
+                folder:currentFolder, pinned:false, favorite:false, deleted:false, updated:Date.now() });
+        }
+        saveState(); renderAll();
+    };
+    if(file.type.startsWith('image/')) reader.readAsDataURL(file);
+    else reader.readAsText(file);
+    e.target.value = '';
+};
+
+/* ================================================================
+   手写画板
+================================================================ */
+const canvas = $('drawCanvas'), ctx = canvas.getContext('2d');
+let drawing = false, penColor = '#000000', erasing = false;
+function openDraw(){
+    showPage('drawPage');
+    requestAnimationFrame(() => {
+        canvas.width = canvas.clientWidth;
+        canvas.height = canvas.clientHeight;
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.strokeStyle = penColor;
+    });
+}
+function drawPos(e){
+    const r = canvas.getBoundingClientRect();
+    const p = e.touches ? e.touches[0] : e;
+    return [p.clientX - r.left, p.clientY - r.top];
+}
+function startDraw(e){ drawing = true; const [x,y] = drawPos(e); ctx.beginPath(); ctx.moveTo(x,y); e.preventDefault(); }
+function moveDraw(e){ if(!drawing) return; const [x,y] = drawPos(e); ctx.lineTo(x,y); ctx.stroke(); e.preventDefault(); }
+function endDraw(){ drawing = false; }
+canvas.onmousedown = startDraw; canvas.onmousemove = moveDraw; canvas.onmouseup = endDraw;
+canvas.ontouchstart = startDraw; canvas.ontouchmove = moveDraw; canvas.ontouchend = endDraw;
+document.querySelectorAll('.color-dot').forEach(d => {
+    d.onclick = () => {
+        document.querySelectorAll('.color-dot').forEach(x => x.classList.remove('on'));
+        d.classList.add('on');
+        penColor = d.dataset.color; erasing = false;
+        ctx.strokeStyle = penColor;
+        $('drawEraser').classList.remove('on');
+    };
+});
+$('drawEraser').onclick = () => {
+    erasing = !erasing;
+    $('drawEraser').classList.toggle('on', erasing);
+    ctx.strokeStyle = erasing ? '#ffffff' : penColor;
+    ctx.lineWidth = erasing ? 20 : 3;
+};
+$('drawClear').onclick = () => {
+    ctx.fillStyle = '#fff'; ctx.fillRect(0,0,canvas.width,canvas.height);
+};
+$('drawBack').onclick = () => { if(confirm('不保存直接退出吗？')) showPage(null); };
+$('drawSave').onclick = () => {
+    state.notes.push({ id:Date.now(), type:'image', source:'draw',
+        title:'手写 ' + new Date().toLocaleDateString(), image: canvas.toDataURL('image/png'),
+        folder: currentFolder, pinned:false, favorite:false, deleted:false, updated: Date.now() });
+    saveState(); renderAll(); showPage(null);
+};
+
+/* ================================================================
+   分类按钮 / 文件夹 / 搜索
+================================================================ */
+document.querySelectorAll('.quick-btn').forEach(b => {
+    b.onclick = () => {
+        currentCat = b.dataset.cat;
+        searchWord = ''; $('searchBox').value = '';
+        renderAll();
+    };
+});
+$('btnNewFolder').onclick = () => {
+    const name = prompt('新文件夹叫什么名字？');
+    if(name && name.trim()){
+        state.folders.push(name.trim());
+        saveState(); renderFolders();
+    }
+};
+let folderEditMode = false;
+$('btnFolderEdit').onclick = () => {
+    folderEditMode = !folderEditMode;
+    $('folderSection').classList.toggle('editing', folderEditMode);
+    $('btnFolderEdit').textContent = folderEditMode ? '完成' : '编辑';
+};
+function renameFolder(name){
+    const nn = prompt('把「' + name + '」改成：', name);
+    if(nn && nn.trim()){
+        state.folders = state.folders.map(f => f === name ? nn.trim() : f);
+        state.notes.forEach(n => { if(n.folder === name) n.folder = nn.trim(); });
+        if(currentFolder === name) currentFolder = nn.trim();
+        saveState(); renderAll();
+    }
+}
+function deleteFolder(name){
+    if(confirm('删除文件夹「' + name + '」？里面的笔记会回到"未分类"。')){
+        state.folders = state.folders.filter(f => f !== name);
+        state.notes.forEach(n => { if(n.folder === name) n.folder = '未分类'; });
+        if(currentFolder === name){ currentFolder = '未分类'; }
+        saveState(); renderAll();
+    }
+}
+$('btnSearch').onclick = () => {
+    const box = $('searchBox');
+    box.classList.toggle('show');
+    if(box.classList.contains('show')) box.focus();
+    else { box.value = ''; searchWord = ''; renderMain(); }
+};
+$('searchBox').oninput = e => {
+    searchWord = e.target.value.trim().toLowerCase();
+    renderMain();
+};
+
+/* 启动 */
+renderAll();
+</script>
 </body>
 </html>
+
